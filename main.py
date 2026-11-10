@@ -15,6 +15,12 @@ def get_stream(q: str):
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch1',
+        # Forzamos los clientes móviles para evitar el bloqueo por cookies/bot de YouTube
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'ios']
+            }
+        }
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
