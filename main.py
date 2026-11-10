@@ -18,32 +18,39 @@ def get_stream(q: str):
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch1',
-        # Configuración para saltarse el bot check en servidores cloud (Render)
         'extractor_args': {
             'youtube': {
-                'player_client': ['tv_embedded', 'mweb', 'web_embedded'],
-                'skip': ['webpage', 'configs']
+                'player_client': ['mweb', 'tv_embedded', 'android']
             }
-        },
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (SmartTV; SmartTV; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) InternetClient/2.0.0 Chrome/115.0.0.0 Safari/537.36'
         }
     }
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(f"{q} audio", download=False)
-            url = None
             
-            if info:
-                if 'entries' in info and len(info['entries']) > 0:
-                    entry = info['entries'][0]
-                    url = entry.get('url')
-                elif 'url' in info:
-                    url = info.get('url')
-            
+            if not info:
+                raise HTTPException(status_code=404, detail="No se obtuvo información de la búsqueda")
+
+            # Si devuelve lista de resultados (ytsearch1)
+            entry = info['entries'][0] if 'entries' in info and len(info['entries']) > 0 else info
+
+            # Intentar obtener la URL directa
+            url = entry.get('url')
+
+            # Si no está en la raíz, buscar dentro de la lista de formatos disponibles
+            if not url and 'formats' in entry:
+                # Filtrar formatos que sean solo de audio o los de mejor calidad
+                audio_formats = [
+                    f for f in entry['formats'] 
+                    if f.get('acodec') != 'none' and f.get('url')
+                ]
+                if audio_formats:
+                    # Seleccionar el último formato (generalmente la mejor calidad de audio)
+                    url = audio_formats[-1]['url']
+
             if not url:
-                raise HTTPException(status_code=404, detail="Audio no encontrado")
+                raise HTTPException(status_code=404, detail="Audio no encontrado en los formatos disponibles")
 
             return JSONResponse(content={"url": url})
     except Exception as e:
