@@ -1,7 +1,6 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse
 import yt_dlp
-import requests
 
 app = FastAPI()
 
@@ -12,7 +11,7 @@ def home():
 @app.get("/stream")
 def get_stream(q: str):
     ydl_opts = {
-        'format': 'bestaudio/best',
+        'format': 'bestaudio[ext=m4a]/bestaudio/best',
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch1',
@@ -29,15 +28,6 @@ def get_stream(q: str):
             if not url:
                 raise HTTPException(status_code=404, detail="Audio no encontrado")
 
-            # Hacemos proxy del flujo de datos con cabeceras de navegador
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-            }
-            req = requests.get(url, headers=headers, stream=True)
-            
-            return StreamingResponse(
-                req.iter_content(chunk_size=1024 * 64),
-                media_type="audio/mpeg"
-            )
+            return JSONResponse(content={"url": url})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
